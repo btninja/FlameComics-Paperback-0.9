@@ -74,6 +74,23 @@ await writeFile(
   `${JSON.stringify(versioning, null, 2)}\n`
 );
 await writeFile(
+  path.join(stableRoot, "index.html"),
+  `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FlameComics Paperback 0.9 Stable Repo</title>
+</head>
+<body>
+  <h1>FlameComics Paperback 0.9 Stable Repo</h1>
+  <p>Paperback should use this page's URL as the repository base.</p>
+  <p><a href="./versioning.json">versioning.json</a></p>
+</body>
+</html>
+`
+);
+await writeFile(
   path.join(distRoot, "metafile.json"),
   `${JSON.stringify(metafile, null, 2)}\n`
 );
