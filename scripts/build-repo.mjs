@@ -2,34 +2,16 @@ import { build } from "esbuild";
 import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  builtWithMetadata,
+  repositoryMetadata,
+  sourceMetadata
+} from "./repository-metadata.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = path.join(root, "dist", "0.9");
 const stableRoot = path.join(distRoot, "stable");
 const extensionRoot = path.join(stableRoot, "FlameComics");
-
-const sourceMetadata = {
-  id: "FlameComics",
-  name: "FlameComics",
-  description: "Extension that pulls manga, manhwa, and manhua from FlameComics.",
-  version: "1.0.0",
-  icon: "icon.png",
-  language: "en",
-  contentRating: "SAFE",
-  badges: [{ text: "English", type: "info" }],
-  capabilities: [1, 4, 16, 64],
-  developers: [
-    {
-      name: "IvanMatthew",
-      website: "http://github.com/Ivanmatthew",
-      github: "https://github.com/Ivanmatthew"
-    },
-    {
-      name: "Local 0.9 migration",
-      website: "https://flamecomics.xyz"
-    }
-  ]
-};
 
 await rm(path.join(root, "dist"), { recursive: true, force: true });
 await mkdir(path.join(extensionRoot, "static"), { recursive: true });
@@ -54,11 +36,9 @@ await copyFile(
 
 const versioning = {
   buildTime: new Date().toISOString(),
+  repository: repositoryMetadata,
   sources: [sourceMetadata],
-  builtWith: {
-    toolchain: "custom-esbuild",
-    types: "1.0.0-alpha.92-compatible"
-  }
+  builtWith: builtWithMetadata
 };
 
 const metafile = {
