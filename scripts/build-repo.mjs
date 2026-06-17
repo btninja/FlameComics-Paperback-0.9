@@ -7,6 +7,7 @@ import {
   repositoryMetadata,
   sourceMetadata
 } from "./repository-metadata.mjs";
+import { renderRepositoryPage } from "./repository-page.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = path.join(root, "dist", "0.9");
@@ -48,6 +49,13 @@ const metafile = {
   language: "en",
   sources: [sourceMetadata.id]
 };
+const repositoryPage = renderRepositoryPage({
+  title: repositoryMetadata.name,
+  description: "A Paperback extensions repository",
+  repositoryDescription: repositoryMetadata.description,
+  baseUrl: "https://btninja.github.io/FlameComics-Paperback-0.9/stable",
+  sources: [sourceMetadata]
+});
 
 await writeFile(
   path.join(stableRoot, "versioning.json"),
@@ -55,20 +63,7 @@ await writeFile(
 );
 await writeFile(
   path.join(stableRoot, "index.html"),
-  `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FlameComics Paperback 0.9 Stable Repo</title>
-</head>
-<body>
-  <h1>FlameComics Paperback 0.9 Stable Repo</h1>
-  <p>Paperback should use this page's URL as the repository base.</p>
-  <p><a href="./versioning.json">versioning.json</a></p>
-</body>
-</html>
-`
+  repositoryPage
 );
 await writeFile(
   path.join(distRoot, "metafile.json"),
@@ -76,21 +71,7 @@ await writeFile(
 );
 await writeFile(
   path.join(distRoot, "index.html"),
-  `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FlameComics Paperback 0.9 Extensions</title>
-</head>
-<body>
-  <h1>FlameComics Paperback 0.9 Extensions</h1>
-  <p>Base URL: <code>./stable</code></p>
-  <p>Available Sources:</p>
-  <ul><li>FlameComics</li></ul>
-</body>
-</html>
-`
+  repositoryPage
 );
 
 console.log(`Built ${path.relative(root, extensionRoot)}`);
