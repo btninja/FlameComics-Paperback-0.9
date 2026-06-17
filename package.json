@@ -1,0 +1,19 @@
+{
+  "name": "flamecomics-paperback-0.9",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "build": "node scripts/build-repo.mjs",
+    "verify:live": "tsx scripts/verify-live.mjs",
+    "check": "npm test -- --run && npm run build && npm run verify:live"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.22.4",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

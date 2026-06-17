@@ -1,0 +1,145 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { FlameComicsExtension } from "../src/extension";
+
+const textEncoder = new TextEncoder();
+
+function bytes(value: string): ArrayBuffer {
+  return textEncoder.encode(value).buffer as ArrayBuffer;
+}
+
+function installFakeApplication(routes: Record<string, { status?: number; body: string }>) {
+  const calls: string[] = [];
+  const state = new Map<string, unknown>();
+
+  globalThis.Application = {
+    async scheduleRequest(request: { url: string }) {
+      calls.push(request.url);
+      const response = routes[request.url];
+      if (!response) {
+        return [{ status: 404, headers: {}, cookies: [] }, bytes("")];
+      }
+
+      return [
+        { status: response.status ?? 200, headers: {}, cookies: [] },
+        bytes(response.body)
+      ];
+    },
+    arrayBufferToUTF8String(buffer: ArrayBuffer) {
+      return new TextDecoder().decode(buffer);
+    },
+    async getDefaultUserAgent() {
+      return "Paperback-Test";
+    },
+    getState(key: string) {
+      return state.get(key);
+    },
+    setState(value: unknown, key: string) {
+      state.set(key, value);
+    },
+    registerInterceptor() {},
+    Selector(target: unknown, selector: string) {
+      return `${String((target as any)?.constructor?.name ?? "target")}.${selector}`;
+    }
+  } as any;
+
+  return { calls, state };
+}
+
+afterEach(() => {
+  delete (globalThis as any).Application;
+});
+
+describe("FlameComics extension runtime", () => {
+  it("refreshes build id and retries section requests when cached build id is stale", async () => {
+    const routes = {
+      "https://flamecomics.xyz": {
+        body: `<script id="__NEXT_DATA__">{"buildId":"fresh"}</script>`
+      },
+      "https://flamecomics.xyz/_next/data/stale/index.json": {
+        status: 404,
+        body: ""
+      },
+      "https://flamecomics.xyz/_next/data/fresh/index.json": {
+        body: JSON.stringify({
+          pageProps: {
+            carousel: [],
+            popularEntries: { blocks: [{ series: [] }] },
+            latestEntries: { blocks: [{ series: [] }] }
+          }
+        })
+      }
+    };
+    const { calls, state } = installFakeApplication(routes);
+    state.set("buildId", "stale");
+
+    const extension = new FlameComicsExtension();
+    const result = await extension.getDiscoverSectionItems(
+      { id: "featured", title: "Featured", type: "featured" },
+      undefined
+    );
+
+    expect(result).toEqual({ items: [], metadata: undefined });
+    expect(calls).toEqual([
+      "https://flamecomics.xyz/_next/data/stale/index.json",
+      "https://flamecomics.xyz",
+      "https://flamecomics.xyz/_next/data/fresh/index.json"
+    ]);
+    expect(state.get("buildId")).toBe("fresh");
+  });
+
+  it("builds chapter details URLs from the chapter token in series JSON", async () => {
+    const routes = {
+      "https://flamecomics.xyz": {
+        body: `<script id="__NEXT_DATA__">{"buildId":"fresh"}</script>`
+      },
+      "https://flamecomics.xyz/_next/data/fresh/series/154.json?id=154": {
+        body: JSON.stringify({
+          pageProps: {
+            series: { title: "Sword Clan", cover: "thumbnail.webp", tags: [] },
+            chapters: [{ chapter_id: 10, chapter: "1.00", token: "abc" }]
+          }
+        })
+      },
+      "https://flamecomics.xyz/_next/data/fresh/series/154/abc.json?id=154&token=abc": {
+        body: JSON.stringify({
+          pageProps: {
+            chapter: { chapter_id: 10, images: { 0: { name: "001.webp" } } }
+          }
+        })
+      }
+    };
+    const { calls } = installFakeApplication(routes);
+
+    const extension = new FlameComicsExtension();
+    const result = await extension.getChapterDetails({
+      chapterId: "10",
+      sourceManga: { mangaId: "154" }
+    });
+
+    expect(result.pages).toEqual([
+      "https://cdn.flamecomics.xyz/uploads/images/series/154/abc/001.webp"
+    ]);
+    expect(calls).toContain(
+      "https://flamecomics.xyz/_next/data/fresh/series/154/abc.json?id=154&token=abc"
+    );
+  });
+
+  it("throws a Cloudflare bypass error when a challenge response is detected", async () => {
+    installFakeApplication({});
+    const extension = new FlameComicsExtension();
+
+    await expect(
+      extension.interceptResponse(
+        { url: "https://flamecomics.xyz", method: "GET" },
+        { status: 403, headers: { "cf-mitigated": "challenge" } },
+        bytes("")
+      )
+    ).rejects.toMatchObject({
+      type: "cloudflareError",
+      resolutionRequest: {
+        url: "https://flamecomics.xyz",
+        method: "GET"
+      }
+    });
+  });
+});
