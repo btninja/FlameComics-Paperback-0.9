@@ -91,7 +91,7 @@ describe("Flame parser", () => {
       {
         id: "featured",
         title: "Featured",
-        type: "featured",
+        type: 0,
         items: [
           {
             type: "featuredCarouselItem",
@@ -104,7 +104,7 @@ describe("Flame parser", () => {
       {
         id: "popular",
         title: "Popular",
-        type: "simpleCarousel",
+        type: 1,
         items: [
           {
             type: "simpleCarouselItem",
@@ -118,7 +118,7 @@ describe("Flame parser", () => {
       {
         id: "latest",
         title: "Latest",
-        type: "simpleCarousel",
+        type: 1,
         items: [
           {
             type: "simpleCarouselItem",

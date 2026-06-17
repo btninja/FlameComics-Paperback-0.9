@@ -2,6 +2,10 @@ export const FLAME_DOMAIN = "https://flamecomics.xyz";
 export const FLAME_CDN_DOMAIN = "https://cdn.flamecomics.xyz";
 export const IMAGE_SERIES_PATH = "uploads/images/series";
 export const IMAGE_CAROUSEL_PATH = "uploads/images/carousel";
+export const DiscoverSectionType = {
+  featured: 0,
+  simpleCarousel: 1
+} as const;
 
 export type SourceMangaRef = {
   mangaId: string;
@@ -70,7 +74,7 @@ export function mapDiscoverSections(payload: unknown) {
     {
       id: "featured",
       title: "Featured",
-      type: "featured",
+      type: DiscoverSectionType.featured,
       items: carousel
         .filter((comic) => comic.series_id != null && comic.image)
         .map((comic) => ({
@@ -83,7 +87,7 @@ export function mapDiscoverSections(payload: unknown) {
     {
       id: "popular",
       title: "Popular",
-      type: "simpleCarousel",
+      type: DiscoverSectionType.simpleCarousel,
       items: popular
         .filter((comic) => comic.series_id != null && comic.cover)
         .map((comic) => ({
@@ -97,7 +101,7 @@ export function mapDiscoverSections(payload: unknown) {
     {
       id: "latest",
       title: "Latest",
-      type: "simpleCarousel",
+      type: DiscoverSectionType.simpleCarousel,
       items: latest
         .filter((comic) => comic.series_id != null && comic.cover)
         .map((comic) => ({
