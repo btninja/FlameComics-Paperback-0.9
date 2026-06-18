@@ -1,6 +1,6 @@
 export const repositoryMetadata = {
-  name: "FlameComics Paperback 0.9",
-  description: "FlameComics extension for Paperback 0.9."
+  name: "btninja Paperback 0.9",
+  description: "Paperback 0.9 extensions for FlameComics and QiManga."
 };
 
 export const builtWithMetadata = {
@@ -30,3 +30,28 @@ export const sourceMetadata = {
     }
   ]
 };
+
+export const qiMangaSourceMetadata = {
+  id: "QiManga",
+  name: "QiManga",
+  description: "Extension that pulls manga, manhwa, and manhua from QiManga.",
+  version: "1.0.0",
+  icon: "icon.png",
+  language: "en",
+  contentRating: "SAFE",
+  badges: [{ text: "English", type: "info" }],
+  capabilities: [1, 4, 16, 64],
+  developers: [
+    {
+      name: "btninja",
+      website: "https://github.com/btninja",
+      github: "https://github.com/btninja"
+    },
+    {
+      name: "Local 0.9 extension",
+      website: "https://qimanga.com"
+    }
+  ]
+};
+
+export const sourceMetadataList = [sourceMetadata, qiMangaSourceMetadata];

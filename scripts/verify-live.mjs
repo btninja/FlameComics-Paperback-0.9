@@ -7,13 +7,25 @@ import {
   mapMangaDetails,
   mapSearchResults
 } from "../src/flameParser.ts";
+import {
+  QIMANGA_API_DOMAIN,
+  mapQiChapterDetails,
+  mapQiChapters,
+  mapQiDiscoverSectionItems,
+  mapQiDiscoverSections,
+  mapQiMangaDetails,
+  mapQiSearchResults
+} from "../src/qiMangaParser.ts";
 
 const FLAME_DOMAIN = "https://flamecomics.xyz";
+const QIMANGA_DOMAIN = "https://qimanga.com";
 
 async function fetchJson(url) {
   const response = await fetch(url, {
     headers: {
-      "user-agent": "Paperback-FlameComics-Verification/1.0"
+      "origin": QIMANGA_DOMAIN,
+      "referer": `${QIMANGA_DOMAIN}/`,
+      "user-agent": "Paperback-Repository-Verification/1.0"
     }
   });
   if (!response.ok) {
@@ -25,7 +37,7 @@ async function fetchJson(url) {
 async function main() {
   const homepage = await fetch(FLAME_DOMAIN, {
     headers: {
-      "user-agent": "Paperback-FlameComics-Verification/1.0"
+      "user-agent": "Paperback-Repository-Verification/1.0"
     }
   }).then((response) => response.text());
   const buildId = extractBuildId(homepage);
@@ -66,15 +78,66 @@ async function main() {
     throw new Error("Live search did not produce results");
   }
 
+  const qiHomePayload = await fetchJson(`${QIMANGA_API_DOMAIN}/v1/home`);
+  const qiSections = mapQiDiscoverSections();
+  const qiNewItems = mapQiDiscoverSectionItems("new", qiHomePayload);
+  if (qiSections.length !== 5 || qiNewItems.items.length === 0) {
+    throw new Error("Live QiManga homepage did not produce populated items");
+  }
+
+  const qiFirstManga = qiNewItems.items[0];
+  const qiSeriesPayload = await fetchJson(
+    `${QIMANGA_API_DOMAIN}/v1/series/${qiFirstManga.mangaId}`
+  );
+  const qiMangaDetails = mapQiMangaDetails(qiFirstManga.mangaId, qiSeriesPayload);
+  const qiChaptersPayload = await fetchJson(
+    `${QIMANGA_API_DOMAIN}/v1/series/${qiFirstManga.mangaId}/chapters?page=1&perPage=30&sort=desc`
+  );
+  const qiChapters = mapQiChapters({ mangaId: qiFirstManga.mangaId }, qiChaptersPayload);
+  if (!qiMangaDetails.mangaInfo.primaryTitle || qiChapters.length === 0) {
+    throw new Error("Live QiManga series details did not produce title and chapters");
+  }
+
+  const qiChapterPayload = await fetchJson(
+    `${QIMANGA_API_DOMAIN}/v1/series/${qiFirstManga.mangaId}/chapters/${qiFirstManga.chapterId}`
+  );
+  const qiChapterDetails = mapQiChapterDetails(
+    {
+      chapterId: qiFirstManga.chapterId,
+      sourceManga: { mangaId: qiFirstManga.mangaId }
+    },
+    qiChapterPayload
+  );
+  if (qiChapterDetails.pages.length === 0) {
+    throw new Error("Live QiManga chapter details did not produce page URLs");
+  }
+
+  const qiSearchPayload = await fetchJson(
+    `${QIMANGA_API_DOMAIN}/v1/series/search?q=immortal&page=1&perPage=20`
+  );
+  const qiSearchResults = mapQiSearchResults(qiSearchPayload);
+  if (qiSearchResults.items.length === 0) {
+    throw new Error("Live QiManga search did not produce results");
+  }
+
   console.log(
     JSON.stringify(
       {
-        buildId,
-        sectionCount: sections.length,
-        sampledManga: mangaDetails.mangaInfo.primaryTitle,
-        sampledChapters: chapters.length,
-        sampledPages: chapterDetails.pages.length,
-        searchResults: searchResults.items.length
+        flameComics: {
+          buildId,
+          sectionCount: sections.length,
+          sampledManga: mangaDetails.mangaInfo.primaryTitle,
+          sampledChapters: chapters.length,
+          sampledPages: chapterDetails.pages.length,
+          searchResults: searchResults.items.length
+        },
+        qiManga: {
+          sectionCount: qiSections.length,
+          sampledManga: qiMangaDetails.mangaInfo.primaryTitle,
+          sampledChapters: qiChapters.length,
+          sampledPages: qiChapterDetails.pages.length,
+          searchResults: qiSearchResults.items.length
+        }
       },
       null,
       2

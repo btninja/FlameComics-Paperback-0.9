@@ -1,2 +1,1 @@
 export { FlameComics, FlameComicsExtension } from "./extension";
-export { QiManga, QiMangaExtension } from "./qiMangaExtension";

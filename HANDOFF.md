@@ -1,8 +1,11 @@
-# Handoff: FlameComics Paperback 0.9 Extension
+# Handoff: Paperback 0.9 Extensions
 
 ## Current State
 
-This folder contains a rebuildable Paperback 0.9 extension project for FlameComics.
+This folder contains a rebuildable Paperback 0.9 extension repository for two sources:
+
+- FlameComics: `https://flamecomics.xyz`
+- QiManga: `https://qimanga.com`
 
 Local path:
 
@@ -10,15 +13,56 @@ Local path:
 /Users/bryan/Documents/FlameComics-Paperback-0.9
 ```
 
-The project has:
+Remote:
 
-- TypeScript source in `src/`
-- Unit tests in `test/`
-- Build script in `scripts/build-repo.mjs`
-- Live FlameComics verifier in `scripts/verify-live.mjs`
-- GitHub Pages workflow in `.github/workflows/pages.yml`
-- Original FlameComics icon in `assets/icon.png`
-- Design/implementation notes in `docs/superpowers/`
+```text
+git@github.com:btninja/FlameComics-Paperback-0.9.git
+```
+
+Install page and Paperback repository base URL:
+
+```text
+https://btninja.github.io/FlameComics-Paperback-0.9/stable/
+https://btninja.github.io/FlameComics-Paperback-0.9/stable
+```
+
+## Project Layout
+
+- `src/extension.ts`: FlameComics runtime extension
+- `src/flameParser.ts`: FlameComics parser helpers
+- `src/qiMangaExtension.ts`: QiManga runtime extension
+- `src/qiMangaParser.ts`: QiManga parser helpers
+- `src/flameIndex.ts`: FlameComics build entry
+- `src/qiMangaIndex.ts`: QiManga build entry
+- `scripts/build-repo.mjs`: builds both source folders into `dist/0.9/stable`
+- `scripts/repository-metadata.mjs`: repository and source metadata
+- `scripts/repository-page.mjs`: install page renderer
+- `scripts/verify-live.mjs`: live FlameComics smoke verifier
+- `assets/icon.png`: FlameComics icon
+- `assets/qimanga-icon.png`: QiManga icon converted from `https://qimanga.com/qiscans.ico`
+- `test/`: parser, runtime, metadata, and page tests
+
+## QiManga API Notes
+
+QiManga is an Angular/SSR app backed by:
+
+```text
+https://api.qimanga.com/api/v1
+```
+
+Useful endpoints:
+
+```text
+GET /home
+GET /series/{slug}
+GET /series/{slug}/chapters?page=1&perPage=30&sort=desc
+GET /series/{slug}/chapters/{chapterSlug}
+GET /series/search?q={query}&page=1&perPage=20
+GET /series?page=1&perPage=20&sort=latest
+GET /series/genres
+```
+
+The extension filters out paid or purchase-required chapters because those are not readable as normal public chapters. Chapter pagination is fetched fully and sorted after all pages are collected.
 
 ## Verification
 
@@ -31,99 +75,41 @@ npm run check
 Last observed result:
 
 ```text
-3 test files passed
-10 tests passed
-Built dist/0.9/stable/FlameComics
+7 test files passed
+22 tests passed
+Built stable/FlameComics, stable/QiManga
 Live verifier:
-  buildId: daQGrsf8dVsqbTg0CzROB
-  sectionCount: 3
-  sampledManga: Omniscient Reader's Viewpoint
-  sampledChapters: 312
-  sampledPages: 17
-  searchResults: 3
+  flameComics:
+    buildId: daQGrsf8dVsqbTg0CzROB
+    sectionCount: 3
+    sampledManga: Omniscient Reader's Viewpoint
+    sampledChapters: 312
+    sampledPages: 17
+    searchResults: 3
+  qiManga:
+    sectionCount: 5
+    sampledManga: Shibuya Noir
+    sampledChapters: 13
+    sampledPages: 10
+    searchResults: 9
 ```
 
-## Git State
+Additional local checks confirmed:
 
-Local Git repo was initialized on branch `main`.
-
-Initial commit:
-
-```text
-b83bc46 Add FlameComics Paperback 0.9 extension
-```
-
-Remote is configured:
-
-```text
-origin git@github.com:btninja/FlameComics-Paperback-0.9.git
-```
-
-SSH authentication to GitHub was verified successfully.
-
-## Last Interaction / Current Blocker
-
-The user asked to put the project on GitHub under username `btninja`.
-
-The shell does not have GitHub CLI installed:
-
-```text
-gh: command not found
-```
-
-No `GITHUB_TOKEN` or `GH_TOKEN` is available in the environment.
-
-The GitHub connector available in this Codex session exposes file/commit operations for existing repositories, but did not expose repository creation.
-
-Attempted push:
-
-```bash
-git push -u origin main
-```
-
-Result:
-
-```text
-ERROR: Repository not found.
-fatal: Could not read from remote repository.
-```
-
-This means `btninja/FlameComics-Paperback-0.9` does not exist yet, or the authenticated GitHub account cannot see it.
-
-## Next Step
-
-Create an empty GitHub repository named:
-
-```text
-FlameComics-Paperback-0.9
-```
-
-under:
-
-```text
-btninja
-```
-
-Then run:
-
-```bash
-cd /Users/bryan/Documents/FlameComics-Paperback-0.9
-git push -u origin main
-```
-
-After the push, GitHub Actions should build and deploy the extension repo through GitHub Pages. The Paperback repo URL should be:
-
-```text
-https://btninja.github.io/FlameComics-Paperback-0.9/stable
-```
+- `dist/0.9/stable/versioning.json` lists `FlameComics` and `QiManga`
+- `dist/0.9/stable/QiManga/index.js` is emitted
+- `dist/0.9/stable/QiManga/static/icon.png` is emitted
+- The local install page lists both sources
+- Live QiManga API details, chapter list, chapter pages, and search respond as expected
 
 ## Useful Commands
 
 ```bash
 npm install
-npm run check
+npm test -- --run
 npm run build
 npm run verify:live
+npm run check
 git status -sb
 git log --oneline --decorate -5
 ```
