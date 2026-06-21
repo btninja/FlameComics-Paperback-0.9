@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   builtWithMetadata,
+  repositoryPackageVersion,
   repositoryMetadata,
   sourceMetadataList
 } from "./repository-metadata.mjs";
@@ -62,7 +63,7 @@ const versioning = {
 const metafile = {
   name: "FlameComics Paperback 0.9 Extensions",
   author: "Local",
-  version: "1.0.0",
+  version: repositoryPackageVersion,
   language: "en",
   sources: sourceMetadataList.map((source) => source.id)
 };

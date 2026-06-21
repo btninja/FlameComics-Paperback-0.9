@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   builtWithMetadata,
+  repositoryPackageVersion,
   repositoryMetadata,
   sourceMetadataList
 } from "../scripts/repository-metadata.mjs";
@@ -18,6 +19,10 @@ describe("0.9 repository metadata", () => {
       toolchain: "1.0.0-alpha.92",
       types: "1.0.0-alpha.92"
     });
+  });
+
+  it("bumps the repository package version for app refresh detection", () => {
+    expect(repositoryPackageVersion).toBe("1.0.1");
   });
 
   it("declares both source entries for the repository", () => {

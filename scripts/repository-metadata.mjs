@@ -3,6 +3,8 @@ export const repositoryMetadata = {
   description: "Paperback 0.9 extensions for FlameComics, QiManga, and MangaK."
 };
 
+export const repositoryPackageVersion = "1.0.1";
+
 export const builtWithMetadata = {
   toolchain: "1.0.0-alpha.92",
   types: "1.0.0-alpha.92"
