@@ -9,7 +9,7 @@ describe("0.9 repository metadata", () => {
   it("declares a repository object required by Paperback 0.9 repos", () => {
     expect(repositoryMetadata).toEqual({
       name: "btninja Paperback 0.9",
-      description: "Paperback 0.9 extensions for FlameComics and QiManga."
+      description: "Paperback 0.9 extensions for FlameComics, QiManga, and MangaK."
     });
   });
 
@@ -23,12 +23,19 @@ describe("0.9 repository metadata", () => {
   it("declares both source entries for the repository", () => {
     expect(sourceMetadataList.map((source) => source.id)).toEqual([
       "FlameComics",
-      "QiManga"
+      "QiManga",
+      "MangaK"
     ]);
     expect(sourceMetadataList.find((source) => source.id === "QiManga")).toMatchObject({
       name: "QiManga",
       icon: "icon.png",
       contentRating: "SAFE",
+      capabilities: [1, 4, 16, 64]
+    });
+    expect(sourceMetadataList.find((source) => source.id === "MangaK")).toMatchObject({
+      name: "MangaK",
+      icon: "icon.png",
+      contentRating: "ADULT",
       capabilities: [1, 4, 16, 64]
     });
   });

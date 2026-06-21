@@ -22,6 +22,11 @@ const sourceBuilds = [
     id: "QiManga",
     entryPoint: path.join(root, "src", "qiMangaIndex.ts"),
     icon: path.join(root, "assets", "qimanga-icon.png")
+  },
+  {
+    id: "MangaK",
+    entryPoint: path.join(root, "src", "mangaKIndex.ts"),
+    icon: path.join(root, "assets", "mangak-icon.png")
   }
 ];
 
