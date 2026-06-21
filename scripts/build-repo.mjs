@@ -1,64 +1,29 @@
-import { build } from "esbuild";
-import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import {
-  builtWithMetadata,
   repositoryPackageVersion,
-  repositoryMetadata,
   sourceMetadataList
 } from "./repository-metadata.mjs";
-import { renderRepositoryPage } from "./repository-page.mjs";
+
+const execFileAsync = promisify(execFile);
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const bundlesRoot = path.join(root, "bundles");
 const distRoot = path.join(root, "dist", "0.9");
 const stableRoot = path.join(distRoot, "stable");
-const sourceBuilds = [
-  {
-    id: "FlameComics",
-    entryPoint: path.join(root, "src", "flameIndex.ts"),
-    icon: path.join(root, "assets", "icon.png")
-  },
-  {
-    id: "QiManga",
-    entryPoint: path.join(root, "src", "qiMangaIndex.ts"),
-    icon: path.join(root, "assets", "qimanga-icon.png")
-  },
-  {
-    id: "MangaK",
-    entryPoint: path.join(root, "src", "mangaKIndex.ts"),
-    icon: path.join(root, "assets", "mangak-icon.png")
-  }
-];
 
 await rm(path.join(root, "dist"), { recursive: true, force: true });
+await rm(bundlesRoot, { recursive: true, force: true });
 
-for (const source of sourceBuilds) {
-  const extensionRoot = path.join(stableRoot, source.id);
-  await mkdir(path.join(extensionRoot, "static"), { recursive: true });
+await execFileAsync(path.join(root, "node_modules", ".bin", "paperback-cli"), ["bundle"], {
+  cwd: root
+});
 
-  await build({
-    entryPoints: [source.entryPoint],
-    bundle: true,
-    minify: true,
-    format: "iife",
-    globalName: "source",
-    target: "es2022",
-    outfile: path.join(extensionRoot, "index.js"),
-    banner: {
-      js: `/* ${source.id} Paperback 0.9 extension */`
-    }
-  });
-
-  await copyFile(source.icon, path.join(extensionRoot, "static", "icon.png"));
-}
-
-const versioning = {
-  buildTime: new Date().toISOString(),
-  repository: repositoryMetadata,
-  sources: sourceMetadataList,
-  builtWith: builtWithMetadata
-};
+await mkdir(distRoot, { recursive: true });
+await cp(bundlesRoot, stableRoot, { recursive: true });
 
 const metafile = {
   name: "FlameComics Paperback 0.9 Extensions",
@@ -67,29 +32,11 @@ const metafile = {
   language: "en",
   sources: sourceMetadataList.map((source) => source.id)
 };
-const repositoryPage = renderRepositoryPage({
-  title: repositoryMetadata.name,
-  description: "A Paperback extensions repository",
-  repositoryDescription: repositoryMetadata.description,
-  baseUrl: "https://btninja.github.io/FlameComics-Paperback-0.9/stable",
-  sources: sourceMetadataList
-});
 
-await writeFile(
-  path.join(stableRoot, "versioning.json"),
-  `${JSON.stringify(versioning, null, 2)}\n`
-);
-await writeFile(
-  path.join(stableRoot, "index.html"),
-  repositoryPage
-);
 await writeFile(
   path.join(distRoot, "metafile.json"),
   `${JSON.stringify(metafile, null, 2)}\n`
 );
-await writeFile(
-  path.join(distRoot, "index.html"),
-  repositoryPage
-);
+await cp(path.join(stableRoot, "index.html"), path.join(distRoot, "index.html"));
 
-console.log(`Built ${sourceBuilds.map((source) => `stable/${source.id}`).join(", ")}`);
+console.log(`Built ${sourceMetadataList.map((source) => `stable/${source.id}`).join(", ")}`);

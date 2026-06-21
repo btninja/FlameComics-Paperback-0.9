@@ -36,11 +36,11 @@ npm run check
 
 ```text
 dist/0.9/stable/FlameComics/index.js
-dist/0.9/stable/FlameComics/static/icon.png
+dist/0.9/stable/FlameComics/info.json
 dist/0.9/stable/QiManga/index.js
-dist/0.9/stable/QiManga/static/icon.png
+dist/0.9/stable/QiManga/info.json
 dist/0.9/stable/MangaK/index.js
-dist/0.9/stable/MangaK/static/icon.png
+dist/0.9/stable/MangaK/info.json
 dist/0.9/stable/versioning.json
 dist/0.9/metafile.json
 dist/0.9/index.html
@@ -49,5 +49,7 @@ dist/0.9/index.html
 Host `dist/0.9/stable` as the Paperback 0.9 source repo URL.
 
 ## Notes
+
+Builds use the native Paperback 0.9 `paperback-cli bundle` toolchain and wrapper folders under `src/<Source>/`.
 
 FlameComics uses current Next.js data routes. QiManga uses the public `https://api.qimanga.com/api/v1` API. MangaK uses its server-rendered Next.js `__NEXT_DATA__` payloads from `https://mangak.io`. `npm run verify:live` checks live discover sections, one manga, chapter pages, and search results for all sources.

@@ -35,10 +35,10 @@ https://btninja.github.io/FlameComics-Paperback-0.9/stable
 - `src/qiMangaParser.ts`: QiManga parser helpers
 - `src/mangaKExtension.ts`: MangaK runtime extension
 - `src/mangaKParser.ts`: MangaK parser helpers
-- `src/flameIndex.ts`: FlameComics build entry
-- `src/qiMangaIndex.ts`: QiManga build entry
-- `src/mangaKIndex.ts`: MangaK build entry
-- `scripts/build-repo.mjs`: builds source folders into `dist/0.9/stable`
+- `src/FlameComics/main.ts`, `src/FlameComics/pbconfig.ts`: native Paperback 0.9 build wrapper
+- `src/QiManga/main.ts`, `src/QiManga/pbconfig.ts`: native Paperback 0.9 build wrapper
+- `src/MangaK/main.ts`, `src/MangaK/pbconfig.ts`: native Paperback 0.9 build wrapper
+- `scripts/build-repo.mjs`: runs `paperback-cli bundle` and copies `bundles` into `dist/0.9/stable`
 - `scripts/repository-metadata.mjs`: repository and source metadata
 - `scripts/repository-page.mjs`: install page renderer
 - `scripts/verify-live.mjs`: live source smoke verifier
@@ -93,8 +93,8 @@ npm run check
 Last observed result:
 
 ```text
-9 test files passed
-30 tests passed
+10 test files passed
+32 tests passed
 Built stable/FlameComics, stable/QiManga, stable/MangaK
 Live verifier:
   flameComics:
@@ -112,9 +112,9 @@ Live verifier:
     searchResults: 9
   mangaK:
     sectionCount: 5
-    sampledManga: Nue’s Exorcist
+    sampledManga: I, The Invincible Villain Master With My Apprentices (Colored)
     sampledChapters: 50
-    sampledPages: 21
+    sampledPages: 62
     searchResults: 24
 ```
 
@@ -122,9 +122,10 @@ Additional local checks confirmed:
 
 - `dist/0.9/stable/versioning.json` lists `FlameComics`, `QiManga`, and `MangaK`
 - `dist/0.9/stable/QiManga/index.js` is emitted
-- `dist/0.9/stable/QiManga/static/icon.png` is emitted
+- `dist/0.9/stable/QiManga/info.json` is emitted
 - `dist/0.9/stable/MangaK/index.js` is emitted
-- `dist/0.9/stable/MangaK/static/icon.png` is emitted
+- `dist/0.9/stable/MangaK/info.json` is emitted
+- `dist/0.9/stable/MangaK/index.js` starts with the native 0.9 wrapper shape `var source=(function(`
 - The local install page lists all sources
 - Live QiManga API details, chapter list, chapter pages, and search respond as expected
 - Live MangaK details, chapter list, chapter pages, and search respond as expected
