@@ -33,15 +33,21 @@ describe("0.9 repository metadata", () => {
     ]);
     expect(sourceMetadataList.find((source) => source.id === "QiManga")).toMatchObject({
       name: "QiManga",
+      version: "1.0.1",
       icon: "icon.png",
       contentRating: "SAFE",
-      capabilities: [1, 4, 16, 64]
+      capabilities: 85
     });
     expect(sourceMetadataList.find((source) => source.id === "MangaK")).toMatchObject({
       name: "MangaK",
+      version: "1.0.1",
       icon: "icon.png",
       contentRating: "ADULT",
-      capabilities: [1, 4, 16, 64]
+      capabilities: 85
+    });
+    expect(sourceMetadataList.find((source) => source.id === "FlameComics")).toMatchObject({
+      version: "1.0.2",
+      capabilities: 85
     });
   });
 });
