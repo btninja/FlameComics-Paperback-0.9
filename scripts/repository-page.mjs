@@ -12,7 +12,7 @@ export function renderRepositoryPage({
   const sourceItems = sources
     .map((source) => {
       const badges = (source.badges ?? [])
-        .map((badge) => renderBadge(badge.text, badge.type))
+        .map((badge) => renderBadge(badge.label ?? badge.text, badge.type))
         .join("");
       return `<li>${escapeHtml(source.name)}${badges}</li>`;
     })

@@ -11,19 +11,17 @@ import {
   type SearchQuery,
   type SourceMangaRef
 } from "./flameParser";
-import type { PaperbackRequest, PaperbackResponse } from "./paperback";
+import {
+  BasicRateLimiter,
+  CloudflareError,
+  CookieStorageInterceptor,
+  PaperbackInterceptor,
+  type Cookie,
+  type Request,
+  type Response
+} from "@paperback/types";
 
 const BUILD_ID_STATE_KEY = "buildId";
-
-class CloudflareBypassError extends Error {
-  type = "cloudflareError";
-  resolutionRequest: PaperbackRequest;
-
-  constructor(resolutionRequest: PaperbackRequest) {
-    super("Cloudflare detected, bypass it to continue");
-    this.resolutionRequest = resolutionRequest;
-  }
-}
 
 type DiscoverSection = {
   id: string;
@@ -36,19 +34,8 @@ type ChapterRef = {
   sourceManga: SourceMangaRef;
 };
 
-export class FlameComicsExtension {
-  private buildId = "";
-  private cloudflareCookies: PaperbackResponse["cookies"] = [];
-
-  async initialise() {
-    Application.registerInterceptor(
-      "flamecomics",
-      Application.Selector(this, "interceptRequest"),
-      Application.Selector(this, "interceptResponse")
-    );
-  }
-
-  async interceptRequest(request: PaperbackRequest): Promise<PaperbackRequest> {
+class FlameComicsInterceptor extends PaperbackInterceptor {
+  async interceptRequest(request: Request): Promise<Request> {
     return {
       ...request,
       headers: {
@@ -61,15 +48,50 @@ export class FlameComicsExtension {
   }
 
   async interceptResponse(
-    _request: PaperbackRequest,
-    response: PaperbackResponse,
+    request: Request,
+    response: Response,
     data: ArrayBuffer
   ): Promise<ArrayBuffer> {
     if (response.headers?.["cf-mitigated"] === "challenge") {
-      throw new CloudflareBypassError(await this.homepageRequest());
+      throw new CloudflareError({
+        url: request.url,
+        method: request.method ?? "GET",
+        headers: {
+          "user-agent": await Application.getDefaultUserAgent()
+        }
+      });
     }
 
     return data;
+  }
+}
+
+export class FlameComicsExtension {
+  private buildId = "";
+  private cookieStorageInterceptor?: CookieStorageInterceptor;
+  private globalRateLimiter = new BasicRateLimiter("flamecomics-rate-limiter", {
+    numberOfRequests: 8,
+    bufferInterval: 1,
+    ignoreImages: true
+  });
+  private flameComicsInterceptor = new FlameComicsInterceptor("flamecomics");
+
+  async initialise() {
+    this.globalRateLimiter.registerInterceptor();
+    this.cookies().registerInterceptor();
+    this.flameComicsInterceptor.registerInterceptor();
+  }
+
+  async interceptRequest(request: Request): Promise<Request> {
+    return this.flameComicsInterceptor.interceptRequest(request);
+  }
+
+  async interceptResponse(
+    request: Request,
+    response: Response,
+    data: ArrayBuffer
+  ): Promise<ArrayBuffer> {
+    return this.flameComicsInterceptor.interceptResponse(request, response, data);
   }
 
   async getDiscoverSections() {
@@ -110,12 +132,35 @@ export class FlameComicsExtension {
     return mapSearchResults(query, payload);
   }
 
-  async saveCloudflareBypassCookies(cookies: PaperbackResponse["cookies"]) {
-    this.cloudflareCookies = (cookies ?? []).filter((cookie) =>
-      cookie.name.startsWith("cf") ||
-      cookie.name.startsWith("_cf") ||
-      cookie.name.startsWith("__cf")
-    );
+  async saveCloudflareBypassCookies(cookies: Cookie[] = []) {
+    for (const cookie of cookies) {
+      if (
+        cookie.name.startsWith("cf") ||
+        cookie.name.startsWith("_cf") ||
+        cookie.name.startsWith("__cf")
+      ) {
+        this.cookies().setCookie(cookie);
+      }
+    }
+  }
+
+  async cloudflareBypassCompleted(
+    _request: Request,
+    cookies: Cookie[] = [],
+    _localStorage: Record<string, string> = {}
+  ) {
+    await this.saveCloudflareBypassCookies(cookies);
+  }
+
+  async bypassCloudflareRequest(request: Request): Promise<Request> {
+    return request;
+  }
+
+  private cookies() {
+    this.cookieStorageInterceptor ??= new CookieStorageInterceptor({
+      storage: "stateManager"
+    });
+    return this.cookieStorageInterceptor;
   }
 
   private async fetchSeriesPayload(mangaId: string) {
@@ -166,45 +211,22 @@ export class FlameComicsExtension {
     Application.setState(this.buildId, BUILD_ID_STATE_KEY);
   }
 
-  private async schedule(request: PaperbackRequest) {
-    const requestWithHeaders = await this.interceptRequest(request);
-    if (this.cloudflareCookies.length > 0) {
-      requestWithHeaders.cookies = {
-        ...(requestWithHeaders.cookies ?? {}),
-        ...Object.fromEntries(
-          this.cloudflareCookies.map((cookie) => [cookie.name, cookie.value])
-        )
-      };
-    }
-
-    const [response, buffer] = await Application.scheduleRequest(requestWithHeaders);
-    await this.interceptResponse(requestWithHeaders, response, buffer);
+  private async schedule(request: Request) {
+    const [response, buffer] = await Application.scheduleRequest(request);
     return {
-      request: requestWithHeaders,
+      request,
       status: response.status,
       headers: response.headers ?? {},
       body: Application.arrayBufferToUTF8String(buffer)
     };
   }
 
-  private assertOk(response: { request: PaperbackRequest; status: number }) {
+  private assertOk(response: { request: Request; status: number }) {
     if (response.status !== 200) {
       throw new Error(
         `Failed to fetch ${response.request.url}; status code ${response.status}`
       );
     }
-  }
-
-  private async homepageRequest(): Promise<PaperbackRequest> {
-    return {
-      url: FLAME_DOMAIN,
-      method: "GET",
-      headers: {
-        referer: `${FLAME_DOMAIN}/`,
-        origin: `${FLAME_DOMAIN}/`,
-        "user-agent": await Application.getDefaultUserAgent()
-      }
-    };
   }
 }
 

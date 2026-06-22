@@ -11,17 +11,15 @@ import {
   type MangaKSearchQuery,
   type MangaKSourceMangaRef
 } from "./mangaKParser";
-import type { PaperbackRequest, PaperbackResponse } from "./paperback";
-
-class CloudflareBypassError extends Error {
-  type = "cloudflareError";
-  resolutionRequest: PaperbackRequest;
-
-  constructor(resolutionRequest: PaperbackRequest) {
-    super("Cloudflare detected, bypass it to continue");
-    this.resolutionRequest = resolutionRequest;
-  }
-}
+import {
+  BasicRateLimiter,
+  CloudflareError,
+  CookieStorageInterceptor,
+  PaperbackInterceptor,
+  type Cookie,
+  type Request,
+  type Response
+} from "@paperback/types";
 
 type DiscoverSection = {
   id: string;
@@ -34,18 +32,8 @@ type ChapterRef = {
   sourceManga: MangaKSourceMangaRef;
 };
 
-export class MangaKExtension {
-  private cloudflareCookies: PaperbackResponse["cookies"] = [];
-
-  async initialise() {
-    Application.registerInterceptor(
-      "mangak",
-      Application.Selector(this, "interceptRequest"),
-      Application.Selector(this, "interceptResponse")
-    );
-  }
-
-  async interceptRequest(request: PaperbackRequest): Promise<PaperbackRequest> {
+class MangaKInterceptor extends PaperbackInterceptor {
+  async interceptRequest(request: Request): Promise<Request> {
     return {
       ...request,
       headers: {
@@ -58,15 +46,49 @@ export class MangaKExtension {
   }
 
   async interceptResponse(
-    _request: PaperbackRequest,
-    response: PaperbackResponse,
+    request: Request,
+    response: Response,
     data: ArrayBuffer
   ): Promise<ArrayBuffer> {
     if (response.headers?.["cf-mitigated"] === "challenge") {
-      throw new CloudflareBypassError(await this.homepageRequest());
+      throw new CloudflareError({
+        url: request.url,
+        method: request.method ?? "GET",
+        headers: {
+          "user-agent": await Application.getDefaultUserAgent()
+        }
+      });
     }
 
     return data;
+  }
+}
+
+export class MangaKExtension {
+  private cookieStorageInterceptor?: CookieStorageInterceptor;
+  private globalRateLimiter = new BasicRateLimiter("mangak-rate-limiter", {
+    numberOfRequests: 8,
+    bufferInterval: 1,
+    ignoreImages: true
+  });
+  private mangaKInterceptor = new MangaKInterceptor("mangak");
+
+  async initialise() {
+    this.globalRateLimiter.registerInterceptor();
+    this.cookies().registerInterceptor();
+    this.mangaKInterceptor.registerInterceptor();
+  }
+
+  async interceptRequest(request: Request): Promise<Request> {
+    return this.mangaKInterceptor.interceptRequest(request);
+  }
+
+  async interceptResponse(
+    request: Request,
+    response: Response,
+    data: ArrayBuffer
+  ): Promise<ArrayBuffer> {
+    return this.mangaKInterceptor.interceptResponse(request, response, data);
   }
 
   async getDiscoverSections() {
@@ -109,12 +131,35 @@ export class MangaKExtension {
     return mapMangaKSearchResults(payload);
   }
 
-  async saveCloudflareBypassCookies(cookies: PaperbackResponse["cookies"]) {
-    this.cloudflareCookies = (cookies ?? []).filter((cookie) =>
-      cookie.name.startsWith("cf") ||
-      cookie.name.startsWith("_cf") ||
-      cookie.name.startsWith("__cf")
-    );
+  async saveCloudflareBypassCookies(cookies: Cookie[] = []) {
+    for (const cookie of cookies) {
+      if (
+        cookie.name.startsWith("cf") ||
+        cookie.name.startsWith("_cf") ||
+        cookie.name.startsWith("__cf")
+      ) {
+        this.cookies().setCookie(cookie);
+      }
+    }
+  }
+
+  async cloudflareBypassCompleted(
+    _request: Request,
+    cookies: Cookie[] = [],
+    _localStorage: Record<string, string> = {}
+  ) {
+    await this.saveCloudflareBypassCookies(cookies);
+  }
+
+  async bypassCloudflareRequest(request: Request): Promise<Request> {
+    return request;
+  }
+
+  private cookies() {
+    this.cookieStorageInterceptor ??= new CookieStorageInterceptor({
+      storage: "stateManager"
+    });
+    return this.cookieStorageInterceptor;
   }
 
   private async fetchSeriesPayload(mangaId: string) {
@@ -131,45 +176,22 @@ export class MangaKExtension {
     return extractMangaKNextData(response.body);
   }
 
-  private async schedule(request: PaperbackRequest) {
-    const requestWithHeaders = await this.interceptRequest(request);
-    if (this.cloudflareCookies.length > 0) {
-      requestWithHeaders.cookies = {
-        ...(requestWithHeaders.cookies ?? {}),
-        ...Object.fromEntries(
-          this.cloudflareCookies.map((cookie) => [cookie.name, cookie.value])
-        )
-      };
-    }
-
-    const [response, buffer] = await Application.scheduleRequest(requestWithHeaders);
-    await this.interceptResponse(requestWithHeaders, response, buffer);
+  private async schedule(request: Request) {
+    const [response, buffer] = await Application.scheduleRequest(request);
     return {
-      request: requestWithHeaders,
+      request,
       status: response.status,
       headers: response.headers ?? {},
       body: Application.arrayBufferToUTF8String(buffer)
     };
   }
 
-  private assertOk(response: { request: PaperbackRequest; status: number }) {
+  private assertOk(response: { request: Request; status: number }) {
     if (response.status !== 200) {
       throw new Error(
         `Failed to fetch ${response.request.url}; status code ${response.status}`
       );
     }
-  }
-
-  private async homepageRequest(): Promise<PaperbackRequest> {
-    return {
-      url: `${MANGAK_DOMAIN}/home`,
-      method: "GET",
-      headers: {
-        referer: `${MANGAK_DOMAIN}/home`,
-        origin: MANGAK_DOMAIN,
-        "user-agent": await Application.getDefaultUserAgent()
-      }
-    };
   }
 }
 

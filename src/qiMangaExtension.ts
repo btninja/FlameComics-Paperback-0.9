@@ -11,17 +11,15 @@ import {
   type QiSearchQuery,
   type QiSourceMangaRef
 } from "./qiMangaParser";
-import type { PaperbackRequest, PaperbackResponse } from "./paperback";
-
-class CloudflareBypassError extends Error {
-  type = "cloudflareError";
-  resolutionRequest: PaperbackRequest;
-
-  constructor(resolutionRequest: PaperbackRequest) {
-    super("Cloudflare detected, bypass it to continue");
-    this.resolutionRequest = resolutionRequest;
-  }
-}
+import {
+  BasicRateLimiter,
+  CloudflareError,
+  CookieStorageInterceptor,
+  PaperbackInterceptor,
+  type Cookie,
+  type Request,
+  type Response
+} from "@paperback/types";
 
 type DiscoverSection = {
   id: string;
@@ -34,18 +32,8 @@ type ChapterRef = {
   sourceManga: QiSourceMangaRef;
 };
 
-export class QiMangaExtension {
-  private cloudflareCookies: PaperbackResponse["cookies"] = [];
-
-  async initialise() {
-    Application.registerInterceptor(
-      "qimanga",
-      Application.Selector(this, "interceptRequest"),
-      Application.Selector(this, "interceptResponse")
-    );
-  }
-
-  async interceptRequest(request: PaperbackRequest): Promise<PaperbackRequest> {
+class QiMangaInterceptor extends PaperbackInterceptor {
+  async interceptRequest(request: Request): Promise<Request> {
     return {
       ...request,
       headers: {
@@ -58,15 +46,49 @@ export class QiMangaExtension {
   }
 
   async interceptResponse(
-    _request: PaperbackRequest,
-    response: PaperbackResponse,
+    request: Request,
+    response: Response,
     data: ArrayBuffer
   ): Promise<ArrayBuffer> {
     if (response.headers?.["cf-mitigated"] === "challenge") {
-      throw new CloudflareBypassError(await this.homepageRequest());
+      throw new CloudflareError({
+        url: request.url,
+        method: request.method ?? "GET",
+        headers: {
+          "user-agent": await Application.getDefaultUserAgent()
+        }
+      });
     }
 
     return data;
+  }
+}
+
+export class QiMangaExtension {
+  private cookieStorageInterceptor?: CookieStorageInterceptor;
+  private globalRateLimiter = new BasicRateLimiter("qimanga-rate-limiter", {
+    numberOfRequests: 8,
+    bufferInterval: 1,
+    ignoreImages: true
+  });
+  private qiMangaInterceptor = new QiMangaInterceptor("qimanga");
+
+  async initialise() {
+    this.globalRateLimiter.registerInterceptor();
+    this.cookies().registerInterceptor();
+    this.qiMangaInterceptor.registerInterceptor();
+  }
+
+  async interceptRequest(request: Request): Promise<Request> {
+    return this.qiMangaInterceptor.interceptRequest(request);
+  }
+
+  async interceptResponse(
+    request: Request,
+    response: Response,
+    data: ArrayBuffer
+  ): Promise<ArrayBuffer> {
+    return this.qiMangaInterceptor.interceptResponse(request, response, data);
   }
 
   async getDiscoverSections() {
@@ -123,12 +145,35 @@ export class QiMangaExtension {
     return mapQiSearchResults(payload);
   }
 
-  async saveCloudflareBypassCookies(cookies: PaperbackResponse["cookies"]) {
-    this.cloudflareCookies = (cookies ?? []).filter((cookie) =>
-      cookie.name.startsWith("cf") ||
-      cookie.name.startsWith("_cf") ||
-      cookie.name.startsWith("__cf")
-    );
+  async saveCloudflareBypassCookies(cookies: Cookie[] = []) {
+    for (const cookie of cookies) {
+      if (
+        cookie.name.startsWith("cf") ||
+        cookie.name.startsWith("_cf") ||
+        cookie.name.startsWith("__cf")
+      ) {
+        this.cookies().setCookie(cookie);
+      }
+    }
+  }
+
+  async cloudflareBypassCompleted(
+    _request: Request,
+    cookies: Cookie[] = [],
+    _localStorage: Record<string, string> = {}
+  ) {
+    await this.saveCloudflareBypassCookies(cookies);
+  }
+
+  async bypassCloudflareRequest(request: Request): Promise<Request> {
+    return request;
+  }
+
+  private cookies() {
+    this.cookieStorageInterceptor ??= new CookieStorageInterceptor({
+      storage: "stateManager"
+    });
+    return this.cookieStorageInterceptor;
   }
 
   private async fetchJson(path: string): Promise<unknown> {
@@ -141,28 +186,17 @@ export class QiMangaExtension {
     return JSON.parse(response.body);
   }
 
-  private async schedule(request: PaperbackRequest) {
-    const requestWithHeaders = await this.interceptRequest(request);
-    if (this.cloudflareCookies.length > 0) {
-      requestWithHeaders.cookies = {
-        ...(requestWithHeaders.cookies ?? {}),
-        ...Object.fromEntries(
-          this.cloudflareCookies.map((cookie) => [cookie.name, cookie.value])
-        )
-      };
-    }
-
-    const [response, buffer] = await Application.scheduleRequest(requestWithHeaders);
-    await this.interceptResponse(requestWithHeaders, response, buffer);
+  private async schedule(request: Request) {
+    const [response, buffer] = await Application.scheduleRequest(request);
     return {
-      request: requestWithHeaders,
+      request,
       status: response.status,
       headers: response.headers ?? {},
       body: Application.arrayBufferToUTF8String(buffer)
     };
   }
 
-  private assertOk(response: { request: PaperbackRequest; status: number }) {
+  private assertOk(response: { request: Request; status: number }) {
     if (response.status !== 200) {
       throw new Error(
         `Failed to fetch ${response.request.url}; status code ${response.status}`
@@ -188,17 +222,6 @@ export class QiMangaExtension {
     return Array.isArray(data) ? data : [];
   }
 
-  private async homepageRequest(): Promise<PaperbackRequest> {
-    return {
-      url: QIMANGA_DOMAIN,
-      method: "GET",
-      headers: {
-        referer: `${QIMANGA_DOMAIN}/`,
-        origin: QIMANGA_DOMAIN,
-        "user-agent": await Application.getDefaultUserAgent()
-      }
-    };
-  }
 }
 
 export const QiManga = new QiMangaExtension();

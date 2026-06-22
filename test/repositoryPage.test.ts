@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderRepositoryPage } from "../scripts/repository-page.mjs";
 
 describe("repository page", () => {
-  it("renders a Paperback install page with addRepo link and source tags", () => {
+  it("renders a Paperback install page with addRepo link and source list", () => {
     const html = renderRepositoryPage({
       title: "FlameComics Paperback 0.9",
       description: "A Paperback extensions repository",
@@ -11,7 +11,7 @@ describe("repository page", () => {
       sources: [
         {
           name: "FlameComics",
-          badges: [{ text: "English", type: "info" }]
+          badges: []
         }
       ]
     });
@@ -23,6 +23,5 @@ describe("repository page", () => {
     );
     expect(html).toContain("Base URL:");
     expect(html).toContain("FlameComics");
-    expect(html).toContain(">English</span>");
   });
 });

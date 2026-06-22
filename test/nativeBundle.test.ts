@@ -32,5 +32,8 @@ describe("native 0.9 bundle contract", () => {
 
     const bundle = readFileSync(mangaKBundlePath, "utf8");
     expect(bundle.startsWith("var source=(function(")).toBe(true);
+    expect(bundle).toContain("BasicRateLimiter");
+    expect(bundle).toContain("bypassCloudflareRequest");
+    expect(bundle).toContain("cloudflareBypassCompleted");
   });
 });
