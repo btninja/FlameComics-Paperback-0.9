@@ -17,7 +17,7 @@ https://btninja.github.io/FlameComics-Paperback-0.9/stable/
 Paperback repository base URL:
 
 ```text
-https://btninja.github.io/FlameComics-Paperback-0.9/stable
+https://btninja.github.io/FlameComics-Paperback-0.9
 ```
 
 ## Commands
@@ -35,6 +35,14 @@ npm run check
 `npm run build` writes the deployable repository to:
 
 ```text
+dist/0.9/FlameComics/index.js
+dist/0.9/FlameComics/info.json
+dist/0.9/QiManga/index.js
+dist/0.9/QiManga/info.json
+dist/0.9/MangaK/index.js
+dist/0.9/MangaK/info.json
+dist/0.9/versioning.json
+dist/0.9/index.html
 dist/0.9/stable/FlameComics/index.js
 dist/0.9/stable/FlameComics/info.json
 dist/0.9/stable/QiManga/index.js
@@ -42,11 +50,9 @@ dist/0.9/stable/QiManga/info.json
 dist/0.9/stable/MangaK/index.js
 dist/0.9/stable/MangaK/info.json
 dist/0.9/stable/versioning.json
-dist/0.9/metafile.json
-dist/0.9/index.html
 ```
 
-Host `dist/0.9/stable` as the Paperback 0.9 source repo URL.
+Host `dist/0.9` as the Paperback 0.9 source repo URL. The build mirrors the native repo under `/stable` too for older install links.
 
 ## Notes
 

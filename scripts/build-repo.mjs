@@ -1,10 +1,9 @@
 import { execFile } from "node:child_process";
-import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import {
-  repositoryPackageVersion,
   sourceMetadataList
 } from "./repository-metadata.mjs";
 
@@ -23,20 +22,7 @@ await execFileAsync(path.join(root, "node_modules", ".bin", "paperback-cli"), ["
 });
 
 await mkdir(distRoot, { recursive: true });
+await cp(bundlesRoot, distRoot, { recursive: true });
 await cp(bundlesRoot, stableRoot, { recursive: true });
 
-const metafile = {
-  name: "FlameComics Paperback 0.9 Extensions",
-  author: "Local",
-  version: repositoryPackageVersion,
-  language: "en",
-  sources: sourceMetadataList.map((source) => source.id)
-};
-
-await writeFile(
-  path.join(distRoot, "metafile.json"),
-  `${JSON.stringify(metafile, null, 2)}\n`
-);
-await cp(path.join(stableRoot, "index.html"), path.join(distRoot, "index.html"));
-
-console.log(`Built ${sourceMetadataList.map((source) => `stable/${source.id}`).join(", ")}`);
+console.log(`Built ${sourceMetadataList.map((source) => source.id).join(", ")} at / and /stable`);

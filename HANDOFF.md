@@ -24,7 +24,7 @@ Install page and Paperback repository base URL:
 
 ```text
 https://btninja.github.io/FlameComics-Paperback-0.9/stable/
-https://btninja.github.io/FlameComics-Paperback-0.9/stable
+https://btninja.github.io/FlameComics-Paperback-0.9
 ```
 
 ## Project Layout
@@ -38,7 +38,7 @@ https://btninja.github.io/FlameComics-Paperback-0.9/stable
 - `src/FlameComics/main.ts`, `src/FlameComics/pbconfig.ts`: native Paperback 0.9 build wrapper
 - `src/QiManga/main.ts`, `src/QiManga/pbconfig.ts`: native Paperback 0.9 build wrapper
 - `src/MangaK/main.ts`, `src/MangaK/pbconfig.ts`: native Paperback 0.9 build wrapper
-- `scripts/build-repo.mjs`: runs `paperback-cli bundle` and copies `bundles` into `dist/0.9/stable`
+- `scripts/build-repo.mjs`: runs `paperback-cli bundle` and copies `bundles` into both `dist/0.9` and `dist/0.9/stable`
 - `scripts/repository-metadata.mjs`: repository and source metadata
 - `scripts/repository-page.mjs`: install page renderer
 - `scripts/verify-live.mjs`: live source smoke verifier
@@ -95,7 +95,7 @@ Last observed result:
 ```text
 10 test files passed
 32 tests passed
-Built stable/FlameComics, stable/QiManga, stable/MangaK
+Built FlameComics, QiManga, MangaK at / and /stable
 Live verifier:
   flameComics:
     buildId: daQGrsf8dVsqbTg0CzROB
@@ -120,7 +120,9 @@ Live verifier:
 
 Additional local checks confirmed:
 
+- `dist/0.9/versioning.json` lists `FlameComics`, `QiManga`, and `MangaK`
 - `dist/0.9/stable/versioning.json` lists `FlameComics`, `QiManga`, and `MangaK`
+- `dist/0.9/metafile.json` is not emitted, so the deployed root cannot be detected as a legacy repo
 - `dist/0.9/stable/QiManga/index.js` is emitted
 - `dist/0.9/stable/QiManga/info.json` is emitted
 - `dist/0.9/stable/MangaK/index.js` is emitted

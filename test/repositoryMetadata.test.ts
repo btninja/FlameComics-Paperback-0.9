@@ -22,7 +22,7 @@ describe("0.9 repository metadata", () => {
   });
 
   it("bumps the repository package version for app refresh detection", () => {
-    expect(repositoryPackageVersion).toBe("1.0.2");
+    expect(repositoryPackageVersion).toBe("1.0.3");
   });
 
   it("declares both source entries for the repository", () => {
@@ -33,20 +33,20 @@ describe("0.9 repository metadata", () => {
     ]);
     expect(sourceMetadataList.find((source) => source.id === "QiManga")).toMatchObject({
       name: "QiManga",
-      version: "1.0.2",
+      version: "1.0.3",
       icon: "icon.png",
       contentRating: "SAFE",
       capabilities: [1, 16, 4, 64]
     });
     expect(sourceMetadataList.find((source) => source.id === "MangaK")).toMatchObject({
       name: "MangaK",
-      version: "1.0.2",
+      version: "1.0.3",
       icon: "icon.png",
       contentRating: "ADULT",
       capabilities: [1, 16, 4, 64]
     });
     expect(sourceMetadataList.find((source) => source.id === "FlameComics")).toMatchObject({
-      version: "1.0.3",
+      version: "1.0.4",
       capabilities: [1, 16, 4, 64]
     });
   });

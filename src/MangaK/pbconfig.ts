@@ -4,7 +4,7 @@ import { ContentRating, SourceIntents } from "@paperback/types";
 export default {
   name: "MangaK",
   description: "Extension that pulls manga, manhwa, and manhua from MangaK.",
-  version: "1.0.2",
+  version: "1.0.3",
   icon: "icon.png",
   language: "en",
   contentRating: ContentRating.ADULT,
